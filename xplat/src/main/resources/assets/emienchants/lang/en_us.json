@@ -1,8 +1,7 @@
 {
   "emi.category.emienchants.enchants": "Enchantment",
 
-  "emienchants.property.rarity": "Rarity: %s",
-  "emienchants.property.rarity_weight": "Weight: %s",
+  "emienchants.property.weight": "Weight: %s",
   "emienchants.property.curse": "Curse: %s",
   "emienchants.property.discoverable": "Enchanting table: %s",
   "emienchants.property.tradeable": "Villagers: %s",

@@ -11,6 +11,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
@@ -22,7 +23,9 @@ import net.minecraft.world.item.enchantment.Enchantment;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static pm.meh.emienchants.Util.getBookStackForLevel;
 
@@ -31,7 +34,6 @@ public class EnchantmentEmiRecipe implements EmiRecipe {
     private static final ResourceLocation ICON_INFO = ResourceLocation.fromNamespaceAndPath(Common.MOD_ID, "textures/gui/icon_info.png");
     private static final ResourceLocation ICON_ENCH_TABLE = ResourceLocation.fromNamespaceAndPath(Common.MOD_ID, "textures/gui/icon_ench_table.png");
     private static final ResourceLocation ICON_VILLAGER = ResourceLocation.fromNamespaceAndPath(Common.MOD_ID, "textures/gui/icon_villager.png");
-    private static final ResourceLocation ICON_DISCOVERABLE = ResourceLocation.fromNamespaceAndPath(Common.MOD_ID, "textures/gui/icon_discoverable.png");
     private static final ResourceLocation ICON_TREASURE = ResourceLocation.fromNamespaceAndPath(Common.MOD_ID, "textures/gui/icon_treasure.png");
     private static final ResourceLocation ICON_CURSE = ResourceLocation.fromNamespaceAndPath(Common.MOD_ID, "textures/gui/icon_curse.png");
 
@@ -53,7 +55,7 @@ public class EnchantmentEmiRecipe implements EmiRecipe {
     private final List<IconBoolStatEntry> iconStats;
     private final List<FormattedCharSequence> description;
 
-    public EnchantmentEmiRecipe(ResourceLocation location, Holder<Enchantment> holder) {
+    public EnchantmentEmiRecipe(ResourceLocation location, Holder.Reference<Enchantment> holder) {
 		this.holder = holder;
         enchantmentResourceLocation = location;
         enchantment = holder.value();
@@ -62,9 +64,9 @@ public class EnchantmentEmiRecipe implements EmiRecipe {
 
         inputs = IntStream.range(1, enchantment.getMaxLevel() + 1).mapToObj(this::getBookForLevel).toList();
         canApplyTo = EmiIngredient.of(BuiltInRegistries.ITEM.stream().map(ItemStack::new).filter(enchantment::canEnchant).map(EmiStack::of).toList());
-        incompatibleSlot = EmiIngredient.of(enchantment.exclusiveSet().stream()
-				.filter(h -> !h.is(holder::is))
-				.map(h -> Util.getBookStackForLevel(holder, holder.value().getMaxLevel()))
+        incompatibleSlot = EmiIngredient.of(Objects.requireNonNull(Minecraft.getInstance().level).registryAccess().lookupOrThrow(Registries.ENCHANTMENT).listElements()
+				.filter(h -> !(h.is(holder) || Enchantment.areCompatible(h, holder)))
+				.map(h -> Util.getBookStackForLevel(h, h.value().getMaxLevel()))
 				.toList());
 
 		boolean enchTable = holder.is(EnchantmentTags.IN_ENCHANTING_TABLE);
@@ -76,12 +78,12 @@ public class EnchantmentEmiRecipe implements EmiRecipe {
                 new IconBoolStatEntry(ICON_CURSE, "curse", holder.is(EnchantmentTags.CURSE), false)
         );
 
-        LAYOUT_DESCRIPTION_OFFSET = LAYOUT_Y_OFFSET + LAYOUT_ROW_HEIGHT * (incompatibleSlot.isEmpty() ? 5 : 6);
+        LAYOUT_DESCRIPTION_OFFSET = LAYOUT_Y_OFFSET + LAYOUT_ROW_HEIGHT * 4;
 
         String descriptionId = location.toLanguageKey("enchantment", "desc");
         if (I18n.exists(descriptionId)) {
 			Component descriptionTranslatable = Component.translatable(descriptionId).withStyle(ChatFormatting.ITALIC);
-			description = Minecraft.getInstance().font.split(descriptionTranslatable, getDisplayWidth() - LAYOUT_X_OFFSET_SMALL * 2);
+			description = Minecraft.getInstance().font.split(descriptionTranslatable, getDisplayWidth() - LAYOUT_X_OFFSET_SMALL * 2 - (incompatibleSlot.isEmpty() ? 0 : LAYOUT_X_OFFSET));
         } else {
 			description = List.of();
         }
@@ -128,12 +130,10 @@ public class EnchantmentEmiRecipe implements EmiRecipe {
         // enchantment slot
         widgetHolder.addSlot(getBookForLevel(enchantment.getMaxLevel()), LAYOUT_X_OFFSET_SMALL, LAYOUT_Y_OFFSET);
         // applicable items slot
-        widgetHolder.add(new CustomEmiSlotWidget(canApplyTo, LAYOUT_X_OFFSET_SMALL, LAYOUT_Y_OFFSET + 20,
-                false, Component.translatable("emienchants.property.applicable_to")));
+        widgetHolder.add(new CustomEmiSlotWidget(canApplyTo, LAYOUT_X_OFFSET_SMALL, LAYOUT_Y_OFFSET + 20, false, Component.translatable("emienchants.property.applicable_to")));
         // incompatible enchants slot
         if (!incompatibleSlot.isEmpty()) {
-            widgetHolder.add(new CustomEmiSlotWidget(incompatibleSlot, LAYOUT_X_OFFSET_SMALL, LAYOUT_Y_OFFSET + 40,
-                    true, Component.translatable("emienchants.property.conflicts")));
+            widgetHolder.add(new CustomEmiSlotWidget(incompatibleSlot, LAYOUT_X_OFFSET_SMALL, LAYOUT_Y_OFFSET + 40, true, Component.translatable("emienchants.property.conflicts")));
         }
 
         // enchantment name and level range
@@ -141,51 +141,30 @@ public class EnchantmentEmiRecipe implements EmiRecipe {
         if (enchantment.getMaxLevel() > 1) {
             title = title.append(String.format(" §5%d-%d", enchantment.getMinLevel(), enchantment.getMaxLevel()));
         }
-        widgetHolder.addText(title, LAYOUT_X_OFFSET, LAYOUT_Y_OFFSET + LAYOUT_ROW_HEIGHT * row++, LAYOUT_TEXT_COLOR, LAYOUT_TEXT_SHADOW);
+        TextWidget titleWidget = widgetHolder.addText(title, LAYOUT_X_OFFSET, LAYOUT_Y_OFFSET + LAYOUT_ROW_HEIGHT * row, LAYOUT_TEXT_COLOR, LAYOUT_TEXT_SHADOW);
+
+		// weight
+		widgetHolder.addTexture(ICON_INFO, LAYOUT_X_OFFSET + titleWidget.getBounds().width() + 1, LAYOUT_Y_OFFSET + LAYOUT_ROW_HEIGHT * row++, 7, 8, 7, 8, 7, 8, 7, 8)
+				.tooltipText(Stream.concat(
+						Stream.<Component>of(Component.translatable("emienchants.property.weight", enchantment.getWeight())),
+						IntStream.range(1, enchantment.getMaxLevel() + 1).mapToObj(lvl -> (Component) Component.translatable("emienchants.property.cost", lvl, enchantment.getMinCost(lvl), enchantment.getMaxCost(lvl)))
+				).toList());
 
         // mod id
-        widgetHolder.addText(Component.literal(enchantmentResourceLocation.getNamespace()).withStyle(ChatFormatting.DARK_BLUE),
-                LAYOUT_X_OFFSET, LAYOUT_Y_OFFSET + LAYOUT_ROW_HEIGHT * row++, LAYOUT_TEXT_COLOR, LAYOUT_TEXT_SHADOW);
-
-        //category
-//        widgetHolder.addText(Component.translatable("emienchants.property.category",
-//                        getLocalizedTextByCode(enchantment.category.name(),
-//                                "emienchants.property.category.%s").withStyle(ChatFormatting.DARK_PURPLE)),
-//                LAYOUT_X_OFFSET, LAYOUT_Y_OFFSET + LAYOUT_ROW_HEIGHT * row++, LAYOUT_TEXT_COLOR, LAYOUT_TEXT_SHADOW);
-
-        // rarity
-//        TextWidget rarityWidget = widgetHolder.addText(Component.translatable("emienchants.property.rarity",
-//                        getLocalizedTextByCode(enchantment.getRarity().name(),
-//                                "emienchants.property.rarity.%s").withStyle(ChatFormatting.DARK_PURPLE)),
-//                LAYOUT_X_OFFSET, LAYOUT_Y_OFFSET + LAYOUT_ROW_HEIGHT * row, LAYOUT_TEXT_COLOR, LAYOUT_TEXT_SHADOW);
-//        widgetHolder.addTexture(ICON_INFO, LAYOUT_X_OFFSET + rarityWidget.getBounds().width() + 1,
-//                LAYOUT_Y_OFFSET + LAYOUT_ROW_HEIGHT * row, 7, 8, 7, 8, 7, 8, 7, 8);
-//        widgetHolder.addTooltipText(Stream.concat(Stream.of(Component.translatable("emienchants.property.rarity_weight",
-//                        enchantment.getRarity().getWeight())), IntStream.range(1, enchantment.getMaxLevel() + 1)
-//                        .mapToObj(lvl -> (Component) Component.translatable("emienchants.property.cost", lvl,
-//                                enchantment.getMinCost(lvl), enchantment.getMaxCost(lvl)))).toList(),
-//                LAYOUT_X_OFFSET, LAYOUT_Y_OFFSET + LAYOUT_ROW_HEIGHT * row++, rarityWidget.getBounds().width() + 9, 8);
+        widgetHolder.addText(Component.literal(enchantmentResourceLocation.getNamespace()).withStyle(ChatFormatting.DARK_BLUE), LAYOUT_X_OFFSET, LAYOUT_Y_OFFSET + LAYOUT_ROW_HEIGHT * row++, LAYOUT_TEXT_COLOR, LAYOUT_TEXT_SHADOW);
 
         // icon stats
-        int iconSectionWidth = 0;
-        int iconXOffset = 0;
-        if (incompatibleSlot.isEmpty()) {
-            iconSectionWidth = (getDisplayWidth() - LAYOUT_X_OFFSET_SMALL * 2) / iconStats.size();
-            iconXOffset = LAYOUT_X_OFFSET_SMALL;
-        } else {
-            iconSectionWidth = (getDisplayWidth() - LAYOUT_X_OFFSET - LAYOUT_X_OFFSET_SMALL) / 3;
-            iconXOffset = LAYOUT_X_OFFSET;
-        }
+        int iconSectionWidth = (getDisplayWidth() - LAYOUT_X_OFFSET - LAYOUT_X_OFFSET_SMALL) / 3;
+        int iconXOffset = LAYOUT_X_OFFSET;
         int iconYOffset = LAYOUT_Y_OFFSET + LAYOUT_ROW_HEIGHT * row;
         int iconCounter = 0;
 
         for (IconBoolStatEntry stat : iconStats) {
             widgetHolder.addTexture(stat.icon, iconXOffset, iconYOffset, 8, 8, 8, 8, 8, 8, 8, 8);
             TextWidget statWidget = widgetHolder.addText(stat.getValueLabel(), iconXOffset + 10, iconYOffset, LAYOUT_TEXT_COLOR, LAYOUT_TEXT_SHADOW);
-            widgetHolder.addTooltipText(List.of(Component.translatable(String.format("emienchants.property.%s.%s", stat.label, stat.value))),
-                    iconXOffset, iconYOffset, statWidget.getBounds().width() + 10, 8);
+            widgetHolder.addTooltipText(List.of(Component.translatable(String.format("emienchants.property.%s.%s", stat.label, stat.value))), iconXOffset, iconYOffset, statWidget.getBounds().width() + 10, 8);
             iconCounter += 1;
-            if (!incompatibleSlot.isEmpty() && iconCounter == 3) {
+            if (iconCounter == 3) {
                 iconCounter = 0;
                 iconXOffset = LAYOUT_X_OFFSET;
                 iconYOffset += LAYOUT_ROW_HEIGHT;
@@ -197,8 +176,7 @@ public class EnchantmentEmiRecipe implements EmiRecipe {
         // description
         row = 0;
         for (FormattedCharSequence line : description) {
-            widgetHolder.addText(line, LAYOUT_X_OFFSET_SMALL, LAYOUT_DESCRIPTION_OFFSET + LAYOUT_ROW_HEIGHT * row++,
-                    LAYOUT_TEXT_COLOR, LAYOUT_TEXT_SHADOW);
+			widgetHolder.addText(line, incompatibleSlot.isEmpty() ? LAYOUT_X_OFFSET_SMALL : LAYOUT_X_OFFSET, LAYOUT_DESCRIPTION_OFFSET + LAYOUT_ROW_HEIGHT * row++, LAYOUT_TEXT_COLOR, LAYOUT_TEXT_SHADOW);
         }
     }
 

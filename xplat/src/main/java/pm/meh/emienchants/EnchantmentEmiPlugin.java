@@ -20,10 +20,10 @@ public class EnchantmentEmiPlugin implements EmiPlugin {
 
 		var level = Minecraft.getInstance().level;
 		if (level != null) {
-			level.registryAccess().registryOrThrow(Registries.ENCHANTMENT).holders().forEach(holder -> {
-				ResourceLocation location = holder.unwrapKey().orElseThrow().location();
-
-				emiRegistry.addRecipe(new EnchantmentEmiRecipe(location, holder));
+			level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).listElements().forEach(holder -> {
+				holder.unwrapKey().ifPresent(k -> {
+					emiRegistry.addRecipe(new EnchantmentEmiRecipe(k.location(), holder));
+				});
 			});
 		}
     }

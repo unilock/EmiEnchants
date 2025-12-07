@@ -1,8 +1,7 @@
 {
   "emi.category.emienchants.enchants": "Зачарование",
 
-  "emienchants.property.rarity": "Редкость: %s",
-  "emienchants.property.rarity_weight": "Вес: %s",
+  "emienchants.property.weight": "Вес: %s",
   "emienchants.property.curse": "Проклятие: %s",
   "emienchants.property.discoverable": "Стол зачаровывания: %s",
   "emienchants.property.tradeable": "Жители: %s",
