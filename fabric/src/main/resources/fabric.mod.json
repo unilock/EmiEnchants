@@ -1,34 +1,26 @@
 {
-    "schemaVersion": 1,
-    "id": "${mod_id}",
-    "version": "${version}",
-    "name": "${mod_name}",
-    "description": "${description}",
-    "authors": [
-        "${mod_author}"
-    ],
-    "contact": {
-        "sources": "${source_code}",
-        "issues": "${issue_tracker}",
-        "homepage": "${discord}"
-    },
-    "license": "${license}",
-    "icon": "icon.png",
-    "environment": "client",
-    "entrypoints": {
-        "main": [
-            "pm.meh.emienchants.EmiEnchants"
-        ],
-        "emi": [
-            "pm.meh.emienchants.EnchantmentEmiPlugin"
-        ]
-    },
-    "mixins": [
-    ],
-    "depends": {
-        "emi": "*",
-        "minecraft": "${fabric_minecraft_version_range}",
-        "java": ">=17"
-    }
+  "schemaVersion": 1,
+  "id": "emienchants",
+  "version": "${version}",
+  "name": "EMI Enchants",
+  "description": "EMI addon to view enchantment information",
+  "authors": [
+    "Mephodio"
+  ],
+  "contact": {
+    "sources": "https://github.com/Mephodio/EmiEnchants",
+    "issues": "https://github.com/Mephodio/EmiEnchants/issues"
+  },
+  "license": "GPL-3.0-only",
+  "icon": "icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "emi": [
+      "pm.meh.emienchants.EnchantmentEmiPlugin"
+    ]
+  },
+  "depends": {
+    "minecraft": ">=1.21",
+    "emi": ">=1.0.0"
+  }
 }
-  

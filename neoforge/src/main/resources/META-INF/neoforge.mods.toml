@@ -1,0 +1,27 @@
+modLoader = "lowcodefml"
+loaderVersion = "[1,)"
+license = "GPL-3.0-only"
+issueTrackerURL = "https://github.com/Mephodio/EmiEnchants/issues"
+
+[[mods]]
+modId = "emienchants"
+version = "${version}"
+displayName = "EMI Enchants"
+displayURL = "https://github.com/Mephodio/EmiEnchants"
+authors = "Mephodio"
+description = '''EMI addon to view enchantment information'''
+logoFile = "icon.png"
+
+[[dependencies.emienchants]]
+modId = "minecraft"
+type = "required"
+versionRange = "[1.21,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.emienchants]]
+modId = "emi"
+type = "required"
+versionRange = "[1.0.0,)"
+ordering = "NONE"
+side = "BOTH"
