@@ -120,7 +120,7 @@ public class EnchantmentEmiRecipe implements EmiRecipe {
 
     @Override
     public int getDisplayHeight() {
-        return LAYOUT_DESCRIPTION_OFFSET + LAYOUT_ROW_HEIGHT * description.size();
+        return LAYOUT_DESCRIPTION_OFFSET + LAYOUT_ROW_HEIGHT * Math.clamp(description.size(), incompatibleSlot.isEmpty() ? 0 : 2, Integer.MAX_VALUE);
     }
 
     @Override
